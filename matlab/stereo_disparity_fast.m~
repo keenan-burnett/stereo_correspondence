@@ -33,12 +33,9 @@ function [Id] = stereo_disparity_fast(Il, Ir, bbox)
 
 %--- FILL ME IN ---
 
-w = 7;
-p = floor(w/2);
+W = 7;
+p = floor(W/2);
 max_d = 63;
-
-Il = double(Il);
-Ir = double(Ir);
 
 shiftX = bbox(1,1);
 shiftY = bbox(2,1);
@@ -50,7 +47,10 @@ if size(Ir,3) > 1
     gR = rgb2gray(Ir);
 end
 
-gL = mask(gL, bbox);
+gL = double(gL);
+gR = double(gR);
+
+bw = mask(gL, bbox);
 
 Id = zeros(size(gL));
 
@@ -58,51 +58,33 @@ gL = pad_replicate(gL, p);
 gR = pad_replicate(gR, p);
 
 [h,w] = size(gL);
-[~, wR] = size(gR);
 
 % Loop over each pixel in left image, find it's match using local SSD
 for i = p+1:h-p
-    for j = p+1:w-p
-        % Determine bounds of search
-        i = i + shiftY;
-        j = j + shiftX;
-        if j <= max_d+p+1
-            lbound = p+1;
-        else
-            lbound = j - max_d;
-        end
-        
-        if j+max_d > wR-p
-            rbound = wR-p;
-        else
-            rbound = j + max_d;
-        end
-        
+    for j = p+1:w-p        
         % Search for the best pixel match using SSD
         patchL = gL(i-p:i+p,j-p:j+p);
         
-        ssd = zeros(rbound - lbound + 1);
-        indices = lbound:rbound;
+        ssd = zeros(1,w-2*p);
+        indices = p+1:w-p;
         q = 1;
-        for k = lbound:rbound
-            windowR = gR(i-p:i+p,k-p:k+p);
-            diff = patchL - windowR;
-            diff = diff.^2;
+        for k = p+1:w-p
+            patchR = gR(i-p:i+p,k-p:k+p);
+            diff = abs(patchL - patchR);
             ssd(q) = sum(diff(:));
             q = q + 1;
         end
         
         [~,idx] = min(ssd);
-        best = indices(idx);
-        disparity = round(abs(best - j));
+        best = indices(1,idx);
+        disparity = abs(best - j);
         Id(i,j) = disparity;
     end
 end
 
-Id = Id(p
-
+Id = Id(p+1:h-p,p+1:w-p);
 maximum = max(Id(:));
-imshow(Id * 255 / max);
+imshow(uint8(Id * 255 / maximum));
         
 
   
@@ -111,25 +93,26 @@ imshow(Id * 255 / max);
 end
 
 function out = mask(img, bbox)
+    out = zeros(size(img));
     x1 = bbox(1,1);
     y1 = bbox(2,1);
     x2 = bbox(1,2);
     y2 = bbox(2,2);
-    out = img(y1:y2,x1:x2);
+    out(y1:y2,x1:x2) = 1;
 end
 
 function out = pad_replicate(img, P)
     [m,n] = size(img);
     L = img(:,1);
     R = img(:,n);
-    L = repmat(L,P,1);
-    R = repmat(R,P,1);
+    L = repmat(L,1,P);
+    R = repmat(R,1,P);
     out = [L img R];
     T = out(1,:);
     B = out(m,:);
-    T = repmat(T,1,P);
-    B = repmat(B,1,P);
-    out = [T ; img ; B];
+    T = repmat(T,P,1);
+    B = repmat(B,P,1);
+    out = [T ; out ; B];
 end
 
 
