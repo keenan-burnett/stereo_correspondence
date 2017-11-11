@@ -37,6 +37,9 @@ w = 7;
 p = floor(w/2);
 max_d = 63;
 
+Il = double(Il);
+Ir = double(Ir);
+
 shiftX = bbox(1,1);
 shiftY = bbox(2,1);
 
@@ -46,9 +49,6 @@ end
 if size(Ir,3) > 1
     gR = rgb2gray(Ir);
 end
-
-gL = double(gL);
-gR = double(gR);
 
 gL = mask(gL, bbox);
 
@@ -64,28 +64,28 @@ gR = pad_replicate(gR, p);
 for i = p+1:h-p
     for j = p+1:w-p
         % Determine bounds of search
-        iR = i + shiftY;
-        jR = j + shiftX;
-        if jR <= max_d+p+1
+        i = i + shiftY;
+        j = j + shiftX;
+        if j <= max_d+p+1
             lbound = p+1;
         else
-            lbound = jR - max_d;
+            lbound = j - max_d;
         end
         
-        if jR+max_d > wR-p
+        if j+max_d > wR-p
             rbound = wR-p;
         else
-            rbound = jR + max_d;
+            rbound = j + max_d;
         end
         
         % Search for the best pixel match using SSD
         patchL = gL(i-p:i+p,j-p:j+p);
         
-        ssd = zeros(1,rbound - lbound + 1);
+        ssd = zeros(rbound - lbound + 1);
         indices = lbound:rbound;
         q = 1;
         for k = lbound:rbound
-            windowR = gR(iR-p:iR+p,k-p:k+p);
+            windowR = gR(i-p:i+p,k-p:k+p);
             diff = patchL - windowR;
             diff = diff.^2;
             ssd(q) = sum(diff(:));
@@ -93,15 +93,16 @@ for i = p+1:h-p
         end
         
         [~,idx] = min(ssd);
-        best = indices(1,idx);
+        best = indices(idx);
         disparity = round(abs(best - j));
         Id(i,j) = disparity;
     end
 end
 
-Id = Id(p+1:h-p,p+1:w-p);
+Id = Id(p
+
 maximum = max(Id(:));
-imshow(uint8(Id * 255 / maximum));
+imshow(Id * 255 / max);
         
 
   
@@ -121,14 +122,14 @@ function out = pad_replicate(img, P)
     [m,n] = size(img);
     L = img(:,1);
     R = img(:,n);
-    L = repmat(L,1,P);
-    R = repmat(R,1,P);
+    L = repmat(L,P,1);
+    R = repmat(R,P,1);
     out = [L img R];
     T = out(1,:);
     B = out(m,:);
-    T = repmat(T,P,1);
-    B = repmat(B,P,1);
-    out = [T ; out ; B];
+    T = repmat(T,1,P);
+    B = repmat(B,1,P);
+    out = [T ; img ; B];
 end
 
 
