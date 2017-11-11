@@ -1,0 +1,18 @@
+Il = imread('../images/cones/cones_image_02.png');
+Ir = imread('../images/cones/cones_image_06.png');
+load('../images/bboxes.mat');
+bbox = cones_01.bbox;
+[Id] = stereo_disparity_fast(Il, Ir, bbox);
+It = imread('../images/cones/cones_disp_true_02.png');
+imshow(uint8(Id));
+imshow(uint8(It));
+[N, rms] = stereo_disparity_score(It, Id)
+
+Il = imread('../images/books/books_image_02.png');
+Ir = imread('../images/books/books_image_06.png');
+bbox = books_01.bbox;
+[Id] = stereo_disparity_fast(Il, Ir, bbox);
+It = imread('../images/cones/cones_disp_true_02.png');
+imshow(uint8(Id));
+imshow(uint8(It));
+[N, rms] = stereo_disparity_score(It, Id)

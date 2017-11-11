@@ -33,7 +33,7 @@ function [Id] = stereo_disparity_fast(Il, Ir, bbox)
 
 %--- FILL ME IN ---
 
-W = 7;
+W = 21;
 max_d = 63;
 
 % Convert to grayscale
@@ -83,8 +83,6 @@ for i = 1:m
         Id(i,j) = d;
     end
 end
-
-imshow(uint8(Id));  
 %------------------
   
 end
