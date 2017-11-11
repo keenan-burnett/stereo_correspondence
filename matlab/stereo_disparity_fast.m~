@@ -37,18 +37,50 @@ W = 7;
 p = floor(W/2);
 max_d = 63;
 
-shiftX = bbox(1,1);
-shiftY = bbox(2,1);
-
+% Convert to grayscale
 if size(Il,3) > 1
     gL = rgb2gray(Il);
 end
 if size(Ir,3) > 1
     gR = rgb2gray(Ir);
 end
-
 gL = double(gL);
 gR = double(gR);
+
+% Compute squared difference at different disparities
+[m,n] = size(gL);
+Co = zeros(m,n,max_d+1);
+Co(:,:,1) = (gL - gR).^2;
+gR_s = gR;
+for i = 2:max_d+1
+    % Shift
+    gR_s = [zeros(m,1) gR_s];
+    gR_s = gR_s(:,1:n);
+    Ci = (gL - gR_s).^2;
+    % Pad left side
+    L = Ci(:,i);
+    L = repmat(L,1,i-1);
+    Ci(:,1:i-1) = L;
+    % Update Co
+    Co(:,:,i) = Ci;
+end
+
+% Compute SSD using separated horizontal and vertical sum filters
+H = ones(1,W);
+V = ones(W,1);
+C = zeros(m,n,max_d+1);
+for i = 1:max_d+1
+    C(:,:,i) = conv2(Co(:,:,i),H);
+    C(:,:,i) = conv2(C(:,:,i),V);
+end
+
+% Compute final disparity image by taking min cost d of C(x,y,d) at (x,y)
+
+
+shiftX = bbox(1,1);
+shiftY = bbox(2,1);
+
+
 
 bw = mask(gL, bbox);
 
@@ -56,13 +88,20 @@ Id = zeros(size(gL));
 
 gL = pad_replicate(gL, p);
 gR = pad_replicate(gR, p);
+bw = pad_replicate(bw,p);   % breaks if bbox = size of image
 
 [h,w] = size(gL);
 
-% Loop over each pixel in left image, find it's match using local SSD
-for i = p+1:h-p
-    for j = p+1:w-p        
-        % Search for the best pixel match using SSD
+% Loop over each pixel in left image, find it's match using local SAD
+[row,col] = find(bw);
+[len,~] = size(row);
+for iter = 1:len
+    i = col(iter);
+    j = row(iter);
+
+% for i = p+1:h-p
+%     for j = p+1:w-p        
+        % Search for the best pixel match using SAD
         patchL = gL(i-p:i+p,j-p:j+p);
         
         ssd = zeros(1,w-2*p);
@@ -79,7 +118,7 @@ for i = p+1:h-p
         best = indices(1,idx);
         disparity = abs(best - j);
         Id(i,j) = disparity;
-    end
+%     end
 end
 
 Id = Id(p+1:h-p,p+1:w-p);

@@ -34,92 +34,57 @@ function [Id] = stereo_disparity_fast(Il, Ir, bbox)
 %--- FILL ME IN ---
 
 W = 7;
-p = floor(W/2);
 max_d = 63;
 
-shiftX = bbox(1,1);
-shiftY = bbox(2,1);
-
+% Convert to grayscale
 if size(Il,3) > 1
     gL = rgb2gray(Il);
 end
 if size(Ir,3) > 1
     gR = rgb2gray(Ir);
 end
-
 gL = double(gL);
 gR = double(gR);
 
-bw = mask(gL, bbox);
-
-Id = zeros(size(gL));
-
-gL = pad_replicate(gL, p);
-gR = pad_replicate(gR, p);
-bw = pad_replicate(bw,p);   % breaks if bbox = size of image
-
-[h,w] = size(gL);
-
-% Loop over each pixel in left image, find it's match using local SAD
-[row,col] = find(bw);
-[len,~] = size(row);
-for iter = 1:len
-    i = col(iter);
-    j = row(iter);
-
-% for i = p+1:h-p
-%     for j = p+1:w-p        
-        % Search for the best pixel match using SAD
-        patchL = gL(i-p:i+p,j-p:j+p);
-        
-        ssd = zeros(1,w-2*p);
-        indices = p+1:w-p;
-        q = 1;
-        for k = p+1:w-p
-            patchR = gR(i-p:i+p,k-p:k+p);
-            diff = abs(patchL - patchR);
-            ssd(q) = sum(diff(:));
-            q = q + 1;
-        end
-        
-        [~,idx] = min(ssd);
-        best = indices(1,idx);
-        disparity = abs(best - j);
-        Id(i,j) = disparity;
-%     end
+% Compute squared difference at different disparities
+[m,n] = size(gL);
+Co = zeros(m,n,max_d+1);
+Co(:,:,1) = (gL - gR).^2;
+gR_s = gR;
+for i = 2:max_d+1
+    % Shift
+    gR_s = [zeros(m,1) gR_s];
+    gR_s = gR_s(:,1:n);
+    Ci = (gL - gR_s).^2;
+    % Pad left side
+    L = Ci(:,i);
+    L = repmat(L,1,i-1);
+    Ci(:,1:i-1) = L;
+    % Update Co
+    Co(:,:,i) = Ci;
 end
 
-Id = Id(p+1:h-p,p+1:w-p);
-maximum = max(Id(:));
-imshow(uint8(Id * 255 / maximum));
-        
+% Compute SSD using separated horizontal and vertical sum filters
+H = ones(1,W);
+V = ones(W,1);
+C = zeros(m,n,max_d+1);
+for i = 1:max_d+1
+    C(:,:,i) = conv2(Co(:,:,i),H, 'same');
+    C(:,:,i) = conv2(C(:,:,i),V, 'same');
+end
 
-  
+% Compute final disparity image by taking min cost d of C(x,y,d) at (x,y)
+Id = zeros(m,n);
+for i = 1:m
+    for j = 1:n
+        ssd = reshape(C(i,j,:),1,64);
+        [~,d] = min(ssd);
+        d = d -1;
+        Id(i,j) = d;
+    end
+end
+
+imshow(uint8(Id));  
 %------------------
   
 end
-
-function out = mask(img, bbox)
-    out = zeros(size(img));
-    x1 = bbox(1,1);
-    y1 = bbox(2,1);
-    x2 = bbox(1,2);
-    y2 = bbox(2,2);
-    out(y1:y2,x1:x2) = 1;
-end
-
-function out = pad_replicate(img, P)
-    [m,n] = size(img);
-    L = img(:,1);
-    R = img(:,n);
-    L = repmat(L,1,P);
-    R = repmat(R,1,P);
-    out = [L img R];
-    T = out(1,:);
-    B = out(m,:);
-    T = repmat(T,P,1);
-    B = repmat(B,P,1);
-    out = [T ; out ; B];
-end
-
-
