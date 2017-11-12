@@ -1,7 +1,7 @@
-function [Id] = stereo_disparity_fast(Il, Ir, bbox)
-% STEREO_DISPARITY_FAST Fast stereo correspondence algorithm.
+function [Id] = stereo_disparity_best(Il, Ir, bbox)
+% STEREO_DISPARITY_BEST Alternative stereo correspondence algorithm.
 %
-%  Id = STEREO_DISPARITY_FAST(Il, Ir, bbox) computes a stereo disparity image
+%  Id = STEREO_DISPARITY_BEST(Il, Ir, bbox) computes a stereo disparity image 
 %  from left stereo image Il and right stereo image Ir.
 %
 %  Inputs:
@@ -73,20 +73,53 @@ for i = 1:max_d+1
     C(:,:,i) = conv2(C(:,:,i),V, 'same');
 end
 
-% Compute final disparity image by taking min cost d of C(x,y,d) at (x,y)
-Id = zeros(m,n);
-for i = 1:m
-    for j = 1:n
-        ssd = reshape(C(i,j,:),1,64);
-        [~,d] = min(ssd);
-        d = d -1;
-        Id(i,j) = d;
-    end
+
+y = 1;
+
+lambda = 1;     % Tune: higher = more regularization
+
+Sbest = zeros(max_d+1,n);
+dbest = zeros(max_d+1,n);
+% initialize x = 1
+
+
+
+
+% Loop over each column x starting at col 2
+
+for x = 2:m
+    % For each disparity value at this column:
+    for d = 1:max_d+1
+        
+        m_x = C(x,y,d);     % Cost at this (x,d)
+        Smin = Inf;
+        dmin = 1;
+        % Find previous x(d) which minimizes cost function
+        for d_1 = 1:max_d+1
+            m_x_1 = C(x-1,y,d_1);
+            smooth_cost = lambda * (d - d_1)^2;
+            S = m_x_1 + smooth_cost;
+            if S < Smin
+                Smin = S;
+                dmin = d_1;
+            end
+        end
+        Sbest(d,x) = Smin + m_x;
+        dbest(d,x) = 
+        
+    end 
 end
 
-x1 = bbox(1,1);
-x2 = bbox(1,2);
-Id = Id(:,x1:x2);
+
+
+
+
+
+
+
+
+
+  
 %------------------
   
 end
