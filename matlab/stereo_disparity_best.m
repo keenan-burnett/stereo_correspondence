@@ -73,43 +73,51 @@ for i = 1:max_d+1
     C(:,:,i) = conv2(C(:,:,i),V, 'same');
 end
 
+% Dynamic Programming Global Optimization
 
-y = 1;
-
+Id = zeros(m,n);
 lambda = 1;     % Tune: higher = more regularization
 
-Sbest = zeros(max_d+1,n);
-dbest = zeros(max_d+1,n);
-Sbest(:,1) = reshape(C(1,y,:),max_d+1,1); % initialize x = 1
+for y = 1:m
 
-% Loop over each column x starting at col 2
-for x = 2:m
-    % For each disparity value at this column:
-    for d = 1:max_d+1
-        
-        m_x = C(x,y,d);     % Cost at this (x,d)
-        Smin = Inf;
-        dmin = 1;
-        % Find previous x(d) which minimizes cost function
-        for d_1 = 1:max_d+1
-            m_x_1 = C(x-1,y,d_1);
-            smooth_cost = lambda * (d - d_1)^2;
-            S = m_x_1 + smooth_cost;
-            if S < Smin
-                Smin = S;
-                dmin = d_1;
+    Sbest = zeros(max_d+1,n);
+    dbest = zeros(max_d+1,n);
+    Sbest(:,1) = reshape(C(1,y,:),max_d+1,1); % initialize x = 1
+
+    % Loop over each column x starting at col 2
+    for x = 2:n
+        % For each disparity value at this column:
+        for d = 1:max_d+1
+            % Find previous x(d) which minimizes cost function
+            Smin = Inf;
+            dmin = 1;
+            for d_1 = 1:max_d+1
+                m_x_1 = Sbest(d_1,x-1);
+                smooth_cost = lambda * (d - d_1)^2;
+                S = m_x_1 + smooth_cost;
+                if S < Smin
+                    Smin = S;
+                    dmin = d_1;
+                end
             end
-        end
-        Sbest(d,x) = Smin + m_x;
-        dbest(d,x) = dmin;
-        
-    end 
+            m_x = C(y,x,d);     % Cost at this (x,d)
+            Sbest(d,x) = Smin + m_x;
+            dbest(d,x) = dmin;
+        end 
+    end
+
+    % Now we backtrack from the end to obtain the optimal row values
+    dx = dmin;
+    disparity_row = zeros(1,n);
+    disparity_row(n) = dx;
+    for x = n:2
+        dx = dbest(x,dx);
+        disparity_row(x-1) = dx;
+    end
+
+    Id(y,:) = disparity_row;
+
 end
-
-
-
-
-
 
 
 
