@@ -1,5 +1,5 @@
 clear all;
-close all;
+% close all;
 Il = imread('../images/cones/cones_image_02.png');
 Ir = imread('../images/cones/cones_image_06.png');
 load('../images/bboxes.mat');
