@@ -33,7 +33,8 @@ function [Id] = stereo_disparity_best(Il, Ir, bbox)
 
 %--- FILL ME IN ---
 
-W = 21;
+W = 3;            % Window Size
+lambda = 225;     % Tune: higher = more regularization
 max_d = 63;
 
 % Convert to grayscale
@@ -74,16 +75,12 @@ for i = 1:max_d+1
 end
 
 % Dynamic Programming Global Optimization
-
 Id = zeros(m,n);
-lambda = 1;     % Tune: higher = more regularization
-
+% For each row, use DP to find globally optimal disparity values
 for y = 1:m
-
     Sbest = zeros(max_d+1,n);
     dbest = zeros(max_d+1,n);
     Sbest(:,1) = reshape(C(1,y,:),max_d+1,1); % initialize x = 1
-
     % Loop over each column x starting at col 2
     for x = 2:n
         % For each disparity value at this column:
@@ -105,25 +102,21 @@ for y = 1:m
             dbest(d,x) = dmin;
         end 
     end
-
     % Now we backtrack from the end to obtain the optimal row values
     dx = dmin;
     disparity_row = zeros(1,n);
     disparity_row(n) = dx;
-    for x = n:2
-        dx = dbest(x,dx);
+    for x = n:-1:2
+        dx = dbest(dx,x);
         disparity_row(x-1) = dx;
     end
-
     Id(y,:) = disparity_row;
-
 end
 
-
-
-
-
-  
+% Mask the output columns based on bbox
+x1 = bbox(1,1);
+x2 = bbox(1,2);
+Id = Id(:,x1:x2);
 %------------------
   
 end
